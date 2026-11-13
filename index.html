@@ -117,6 +117,8 @@ table.rk tfoot td{font-weight:700;border-top:2px solid var(--line);background:va
 <div class="set">
 <label>Toleransi terlambat (menit)<input type="number" id="tm" value="0" min="0"></label>
 <label>Toleransi pulang cepat (menit)<input type="number" id="tp" value="0" min="0"></label>
+<label>Tidak absen masuk dihitung terlambat (menit)<input type="number" id="dm" value="60" min="0"></label>
+<label>Tidak absen pulang dihitung pulang cepat (menit)<input type="number" id="dp" value="60" min="0"></label>
 <label>Jam masuk staf<input type="time" id="sm" value="07:00"></label>
 <label>Jam pulang staf<input type="time" id="sp" value="14:00"></label>
 <label>Periode awal<input type="date" id="pf"></label>
@@ -261,10 +263,14 @@ function evalDay(id,date){
     if(ex){r.st='bad';r.fl=['Tidak hadir']}else r.fl=['Tidak ada jadwal'];return r}
   if(!ex){r.inT=sc[0];r.outT=sc.length>1?sc[sc.length-1]:null;r.st='ok';r.fl=['Hadir (tanpa jadwal)'];return r}
   if(sc.length===1){const t=sc[0];
-    if(t<=(ex.in+ex.out)/2){r.inT=t;r.fl.push('Tidak absen pulang')}else{r.outT=t;r.fl.push('Tidak absen masuk')}
+    // Hanya satu scan: yang tidak di-scan dihitung terlambat / pulang cepat sebesar denda menit pengaturan
+    const dm=Math.max(0,parseInt($('dm').value,10)||0),dp=Math.max(0,parseInt($('dp').value,10)||0);
+    if(t<=(ex.in+ex.out)/2){r.inT=t;r.fl.push('Tidak absen pulang');if(dp){r.early=dp;r.fl.push(`Pulang cepat ${dp} mnt (tidak absen pulang)`)}}
+    else{r.outT=t;r.fl.push('Tidak absen masuk');if(dm){r.late=dm;r.fl.push(`Terlambat ${dm} mnt (tidak absen masuk)`)}}
   }else{r.inT=sc[0];r.outT=sc[sc.length-1]}
-  if(r.inT!=null&&r.inT>ex.in+tm){r.late=Math.round((r.inT-ex.in)/60);r.fl.push(`Terlambat ${r.late} mnt`)}
-  if(r.outT!=null&&r.outT<ex.out-tp){r.early=Math.round((ex.out-r.outT)/60);r.fl.push(`Pulang cepat ${r.early} mnt`)}
+  const noIn=r.fl.includes('Tidak absen masuk'),noOut=r.fl.includes('Tidak absen pulang');
+  if(r.inT!=null&&!noIn&&r.inT>ex.in+tm){r.late=Math.round((r.inT-ex.in)/60);r.fl.push(`Terlambat ${r.late} mnt`)}
+  if(r.outT!=null&&!noOut&&r.outT<ex.out-tp){r.early=Math.round((ex.out-r.outT)/60);r.fl.push(`Pulang cepat ${r.early} mnt`)}
   const miss=r.fl.some(f=>/Tidak absen/.test(f));
   r.st=miss?'bad':r.fl.length?'late':'ok';
   if(!r.fl.length)r.fl=['Tepat waktu'];
@@ -515,7 +521,7 @@ async function exportPdf(){
   T0('Guru dan staf  |  Periode '+per,tx,PH-58,10.5,F,[255,255,255]);
   y=PH-68-16;
   const hol=S.hol.filter(d=>S.dates.includes(d)).map(fd).join(', ')||'tidak ada';
-  wrap(`Toleransi terlambat ${$('tm').value} menit  |  Toleransi pulang cepat ${$('tp').value} menit  |  Jam staf ${$('sm').value}-${$('sp').value}  |  Hari libur: ${hol}`,PW-2*M,8.5,F).forEach(l=>{T0(l,M,y,8.5,F,[70,80,90]);y-=12});
+  wrap(`Toleransi terlambat ${$('tm').value} menit  |  Toleransi pulang cepat ${$('tp').value} menit  |  Tidak absen masuk=terlambat ${$('dm').value} mnt, tidak absen pulang=pulang cepat ${$('dp').value} mnt  |  Jam staf ${$('sm').value}-${$('sp').value}  |  Hari libur: ${hol}`,PW-2*M,8.5,F).forEach(l=>{T0(l,M,y,8.5,F,[70,80,90]);y-=12});
   const note=wrap('Predikat: Sangat Baik = tidak ada tidak hadir, terlambat, pulang cepat, atau kurang scan. Baik = tidak pernah tidak hadir dan terlambat paling banyak 25% dari hari terjadwal. Cukup = tidak hadir paling banyak 25% dari hari terjadwal. Kurang = selebihnya. Terlambat dihitung dari jam pelajaran pertama masing-masing guru pada hari itu. DL = dinas luar; hari sakit, ijin dan dinas luar tidak dihitung tidak hadir.',PW-2*M,7.5,F);
   note.forEach(l=>{T0(l,M,y,7.5,F,[100,110,120]);y-=10});
   y-=4;const kp=[['Kehadiran',pct+'%',[27,127,75]],['Tidak hadir',T.a+'x',[180,35,24]],['Terlambat',T.l+'x ('+T.m+' menit)',[161,92,0]],['Pulang cepat',T.e+'x ('+T.em+' menit)',[161,92,0]]];
@@ -571,7 +577,7 @@ bind('f2','d2','m2',(wb,file)=>{
   const r=parseFP(wb);S.scans=r.scans;S.all=r.dates;S.fpNames=r.names;applyPeriod();
   $('m2').style.color='';$('m2').textContent=`✓ ${file.name} · ${r.dates.length} tanggal, ${Object.keys(r.scans).length} orang`;
 });
-['tm','tp','sm','sp','q'].forEach(i=>$(i).addEventListener('input',render));
+['tm','tp','dm','dp','sm','sp','q'].forEach(i=>$(i).addEventListener('input',render));
 ['pf','pt'].forEach(i=>$(i).addEventListener('input',()=>{applyPeriod();render()}));
 $('pr').addEventListener('click',()=>{$('pf').value='';$('pt').value='';applyPeriod();render()});
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
@@ -610,7 +616,7 @@ function dbErr(e,ctx){
 }
 
 const putCfg=(key,value)=>dbx('/absen_config?on_conflict=key',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key,value,updated_at:new Date().toISOString()})});
-const getSet=()=>({tm:$('tm').value,tp:$('tp').value,sm:$('sm').value,sp:$('sp').value,hol:S.hol});
+const getSet=()=>({tm:$('tm').value,tp:$('tp').value,dm:$('dm').value,dp:$('dp').value,sm:$('sm').value,sp:$('sp').value,hol:S.hol});
 
 async function saveJadwal(){
   if(!S.sched)return;
@@ -657,7 +663,7 @@ async function loadDB(){
     const rows=await dbx('/absen_config?select=key,value,updated_at');
     const m={};rows.forEach(r=>m[r.key]=r);const got=[];
     if(m.pengaturan&&m.pengaturan.value){const v=m.pengaturan.value;
-      ['tm','tp','sm','sp'].forEach(k=>{if(v[k]!=null&&v[k]!=='')$(k).value=v[k]});
+      ['tm','tp','dm','dp','sm','sp'].forEach(k=>{if(v[k]!=null&&v[k]!=='')$(k).value=v[k]});
       S.hol=Array.isArray(v.hol)?v.hol:[];renderHol();got.push('pengaturan')}
     if(m.kode_mesin&&m.kode_mesin.value&&Array.isArray(m.kode_mesin.value.items)){const v=m.kode_mesin.value;
       S.pdp={};v.items.forEach(i=>{const k=String(parseInt(i.id,10));if(k!=='NaN')S.pdp[k]={nama:i.nama,role:i.role}});S.pdpAt=v.synced_at||null;
@@ -713,7 +719,7 @@ async function bukaRekap(id){
     const r=await dbx('/absen_rekap?id=eq.'+encodeURIComponent(id)+'&select=judul,pengaturan,jadwal,scans');
     const x=r&&r[0];if(!x)throw new Error('Rekap tidak ditemukan.');
     const st=x.pengaturan||{};
-    ['tm','tp','sm','sp'].forEach(k=>{if(st[k]!=null&&st[k]!=='')$(k).value=st[k]});
+    ['tm','tp','dm','dp','sm','sp'].forEach(k=>{if(st[k]!=null&&st[k]!=='')$(k).value=st[k]});
     S.hol=Array.isArray(st.hol)?st.hol:[];renderHol();
     S.sched=x.jadwal.sched;S.names=x.jadwal.names||{};S.jfile=x.jadwal.file||'';
     S.scans=x.scans.scans;S.all=x.scans.all||[];S.fpNames=x.scans.names||{};
@@ -740,7 +746,7 @@ new MutationObserver(()=>{$('rkhist').textContent=$('rkpanel').hidden?'Riwayat r
 $('rkhist').addEventListener('click',()=>{const p=$('rkpanel');if(!p.hidden){p.hidden=true;return}listRekap()});
 $('rkpanel').addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b)return;
   b.dataset.a==='open'?bukaRekap(b.dataset.id):hapusRekap(b.dataset.id)});
-['tm','tp','sm','sp'].forEach(i=>$(i).addEventListener('input',autoSaveSet));
+['tm','tp','dm','dp','sm','sp'].forEach(i=>$(i).addEventListener('input',autoSaveSet));
 loadDB();
 </script>
 </body>
