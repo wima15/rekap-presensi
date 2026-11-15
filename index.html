@@ -123,7 +123,7 @@ td.bd2{color:var(--bad);font-weight:600}
 <p class="sub">Unggah jadwal sebagai acuan, lalu unggah hasil fingerprint. Rekap dihitung otomatis per guru dan per tanggal.</p></div></div>
 
 <div class="nav" role="tablist" id="mainnav">
-<button class="tab mt" role="tab" data-m="1" aria-selected="true" type="button">1. Input</button>
+<button class="tab mt" role="tab" data-m="1" aria-selected="true" type="button">1. Input jadwal</button>
 <button class="tab mt" role="tab" data-m="2" aria-selected="false" type="button">2. Cek jadwal</button>
 <button class="tab mt" role="tab" data-m="3" aria-selected="false" type="button">3. Pengaturan</button>
 <button class="tab mt" role="tab" data-m="4" aria-selected="false" type="button">4. Hasil rekap</button>
@@ -141,8 +141,7 @@ td.bd2{color:var(--bad);font-weight:600}
 <!-- ========== TAB 1: INPUT ========== -->
 <section id="p1" data-p="1" style="margin-top:14px">
 <div class="up">
-<label class="drop" id="d1"><b>1. Jadwal acuan 1 (reguler)</b><span>File .xlsx dengan sheet JADWAL dan kode mesin guru</span><em id="m1"></em><input type="file" id="f1" accept=".xlsx,.xls"></label>
-<label class="drop" id="d2"><b>2. Hasil fingerprint</b><span>File .xls atau .xlsx dari mesin (kolom No.ID dan Tgl/Waktu)</span><em id="m2"></em><input type="file" id="f2" accept=".xlsx,.xls,.csv"></label>
+<label class="drop" id="d1"><b>Jadwal acuan 1 (reguler)</b><span>File .xlsx dengan sheet JADWAL dan kode mesin guru</span><em id="m1"></em><input type="file" id="f1" accept=".xlsx,.xls"></label>
 </div>
 
 <div class="bar" style="margin-top:12px"><b style="font-size:14px">Unduh template</b>
@@ -234,6 +233,9 @@ td.bd2{color:var(--bad);font-weight:600}
 
 <!-- ========== TAB 4: HASIL REKAP ========== -->
 <section id="p4" data-p="4" hidden style="margin-top:14px">
+<div class="up" style="margin-bottom:12px">
+<label class="drop" id="d2"><b>Hasil fingerprint dari mesin</b><span>File .xls atau .xlsx dari mesin (kolom No.ID dan Tgl/Waktu). Jadwal diunggah di tab 1.</span><em id="m2"></em><input type="file" id="f2" accept=".xlsx,.xls,.csv"></label>
+</div>
 <div class="bar" role="tablist">
 <button class="tab" role="tab" data-t="mx" aria-selected="true">Matriks harian</button>
 <button class="tab" role="tab" data-t="rg" aria-selected="false">Ringkasan per guru</button>
@@ -248,7 +250,7 @@ td.bd2{color:var(--bad);font-weight:600}
 <span><i class="s-ok"></i>Tepat waktu</span><span><i class="s-late"></i>Terlambat / pulang cepat</span>
 <span><i class="s-bad"></i>Tidak hadir / tidak absen masuk atau pulang</span><span><i class="s-izin"></i>Sakit / ijin / dinas luar (dari aplikasi ijin pdp)</span><span><i class="s-none"></i>Tidak ada jadwal / libur</span><span><i class="s-fm"></i>Force Majeure (kendala alat, dikecualikan)</span>
 </div>
-<div class="wrap" id="out"><div class="empty">Unggah kedua file untuk melihat rekap.</div></div>
+<div class="wrap" id="out"><div class="empty">Unggah hasil fingerprint di atas untuk melihat rekap.</div></div>
 </section>
 </main>
 
@@ -479,7 +481,7 @@ function renderPrev(){
       else add('g','Semua guru terjadwal ada di data fingerprint.')}
   }
   if(S.scans)add('g',`Data fingerprint: ${(S.all||[]).length} tanggal (${fd2((S.all||[])[0])} s.d. ${fd2((S.all||[]).slice(-1)[0])}), ${Object.keys(S.scans).length} orang.`);
-  else add('w','Data fingerprint belum diunggah.');
+  else add('w','Data fingerprint belum diunggah (diunggah di tab 4, Hasil rekap).');
   if(S.tes){
     const a=v('a2f'),b=v('a2t');
     if(!a||!b||a>b)add('w','Jadwal tes sudah diunggah, tetapi tanggal berlakunya belum benar (atur di tab 3).');
@@ -621,7 +623,7 @@ function cellHtml(r){
 function render(){
   acuHint();if(!$('p2').hidden)renderPrev();
   const out=$('out');
-  if(!S.scans||!S.sched){out.innerHTML='<div class="empty">Unggah kedua file untuk melihat rekap.</div>';return}
+  if(!S.scans||!S.sched){out.innerHTML='<div class="empty">'+(!S.sched&&!S.scans?'Unggah jadwal acuan di tab 1 dan hasil fingerprint di kotak atas untuk melihat rekap.':!S.sched?'Jadwal acuan belum diunggah. Unggah di tab 1 (Input jadwal).':'Unggah hasil fingerprint di kotak atas untuk melihat rekap.')+'</div>';return}
   if(!S.dates.length){out.innerHTML='<div class="empty">Tidak ada data fingerprint pada periode yang dipilih.</div>';return}
   const{P,det,sum}=compute();let h='';
   if(S.tab==='mx'){
