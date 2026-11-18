@@ -118,6 +118,8 @@ td.bd2{color:var(--bad);font-weight:600}
 .hol[hidden]{display:none}
 .stf{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--acc);border-radius:10px;padding:12px 14px;margin:0 0 14px;display:flex;flex-direction:column;gap:8px}
 .stf .sh{margin:0}
+.sfl{display:flex;flex-wrap:wrap;gap:4px;max-height:200px;overflow-y:auto}
+.chip.tg{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
 .stl{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;max-height:320px;overflow-y:auto;padding:2px}
 .stc{display:flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer}
 .stc.on{background:var(--accbg);border-color:var(--acc)}
@@ -218,6 +220,8 @@ td.bd2{color:var(--bad);font-weight:600}
 <div class="sh"><b>Tugas tambahan staf</b><span class="hint" id="stn"></span><span class="sp"></span><input type="search" id="stq" placeholder="Cari nama guru"><button class="tab" id="stclr" type="button">Hapus semua centang</button></div>
 <span class="hint">Centang guru yang mendapat tugas tambahan sebagai staf. Rekap guru yang dicentang mengikuti jam kerja staf (jam masuk dan pulang staf di atas, atau jam kerja Pasca tes pada tanggalnya), pada semua hari kerja, bukan jadwal mengajarnya. Jadwal tes tetap dipakai bila guru itu tercantum di jadwal tes, dan jadwal piket tetap berlaku seperti biasa. Pilihan tersimpan otomatis.</span>
 <div class="stl" id="stl"></div>
+<div class="sh" style="margin-top:6px"><b>Daftar staf</b><span class="hint" id="sfn"></span></div>
+<div class="sfl" id="sfl"></div>
 </div>
 
 <div class="sh" style="margin-top:16px"><b>Acuan jadwal tambahan</b><span class="hint">Aturan: tanggal Acuan 2, 3, dan 4 tidak boleh bertabrakan. Tanggal yang diisi memakai acuan itu; tanggal yang tidak diisi memakai Jadwal Reguler (acuan 1). Jadwal Reguler hanya dipakai untuk Reguler dan Pasca tes.</span></div>
@@ -587,7 +591,13 @@ function renderStaf(){
   $('stn').textContent=all.length?`${n} dari ${all.length} guru bertugas tambahan staf`:'Belum ada data guru. Muat dari database atau unggah jadwal reguler di tab 1.';
   const top=el.scrollTop;
   el.innerHTML=L.map(p=>`<label class="stc${S.staf[p.id]?' on':''}"><input type="checkbox" data-id="${p.id}"${S.staf[p.id]?' checked':''}><span>${esc(p.name)}<small>ID ${p.id}</small></span></label>`).join('')||'<div class="empty">'+(all.length?'Tidak ada guru yang cocok.':'')+'</div>';
-  el.scrollTop=top}
+  el.scrollTop=top;
+  /* Daftar staf: data pdp dengan role bukan guru, ditambah guru bertugas tambahan staf */
+  const sf=Object.keys(S.pdp||{}).filter(k=>S.pdp[k].role!=='guru'&&!(S.sched&&S.sched[k])&&!S.staf[k]).map(id=>({id,name:nameOf(id),tg:0}))
+    .concat(Object.keys(S.staf).map(id=>({id,name:nameOf(id),tg:1}))).sort((a,b)=>a.name.localeCompare(b.name,'id'));
+  const nStaf=sf.filter(x=>!x.tg).length;
+  $('sfn').textContent=sf.length?`${nStaf} staf${sf.length-nStaf?' · '+(sf.length-nStaf)+' guru bertugas tambahan staf':''} (memakai jam staf)`:'Belum ada data staf. Muat dari database (data guru/staf dari pdp).';
+  $('sfl').innerHTML=sf.map(x=>`<span class="chip t${x.tg?' tg':''}">${esc(x.name)} <small class="hint">ID ${x.id}${x.tg?' · tugas tambahan':''}</small></span>`).join('')}
 /*STAF-END*/
 const fmOf=d=>S.fm.find(x=>x.d===d);
 const isOff=d=>S.hol.includes(d)||!!fmOf(d);
