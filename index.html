@@ -115,6 +115,14 @@ table.rk tfoot td{font-weight:700;border-top:2px solid var(--line);background:va
 .chip.t{padding:3px 11px;margin:2px 4px 2px 0}.chip.bad{background:var(--badbg);border-color:var(--bad);color:var(--bad)}
 td.bd2{color:var(--bad);font-weight:600}
 .flow{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
+.hol[hidden]{display:none}
+.stf{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--acc);border-radius:10px;padding:12px 14px;margin:0 0 14px;display:flex;flex-direction:column;gap:8px}
+.stf .sh{margin:0}
+.stl{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;max-height:320px;overflow-y:auto;padding:2px}
+.stc{display:flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer}
+.stc.on{background:var(--accbg);border-color:var(--acc)}
+.stc input{width:18px;height:18px;flex:none;accent-color:var(--acc)}
+.stc span{font-weight:600;font-size:14px;line-height:1.25}.stc small{display:block;font-weight:400;color:var(--mute);font-size:12px}
 </style>
 </head>
 <body>
@@ -206,6 +214,12 @@ td.bd2{color:var(--bad);font-weight:600}
 <span class="hint" style="flex-basis:100%">Dipakai saat ada kendala di luar kendali guru/staf, misalnya mesin fingerprint rusak atau listrik padam. Tanggal ini diperlakukan seperti libur: tidak dihitung sebagai hari terjadwal, tidak hadir, terlambat, maupun pulang cepat.</span>
 </div>
 
+<div class="stf" id="stfbox">
+<div class="sh"><b>Tugas tambahan staf</b><span class="hint" id="stn"></span><span class="sp"></span><input type="search" id="stq" placeholder="Cari nama guru"><button class="tab" id="stclr" type="button">Hapus semua centang</button></div>
+<span class="hint">Centang guru yang mendapat tugas tambahan sebagai staf. Rekap guru yang dicentang mengikuti jam kerja staf (jam masuk dan pulang staf di atas, atau jam kerja Pasca tes pada tanggalnya), pada semua hari kerja, bukan jadwal mengajarnya. Jadwal tes tetap dipakai bila guru itu tercantum di jadwal tes, dan jadwal piket tetap berlaku seperti biasa. Pilihan tersimpan otomatis.</span>
+<div class="stl" id="stl"></div>
+</div>
+
 <div class="sh" style="margin-top:16px"><b>Acuan jadwal tambahan</b><span class="hint">Aturan: tanggal Acuan 2, 3, dan 4 tidak boleh bertabrakan. Tanggal yang diisi memakai acuan itu; tanggal yang tidak diisi memakai Jadwal Reguler (acuan 1). Jadwal Reguler hanya dipakai untuk Reguler dan Pasca tes.</span></div>
 <div class="hol" id="acuWarn" hidden style="border-color:var(--bad);background:var(--badbg);color:var(--bad);font-size:14px"></div>
 <div class="acu">
@@ -292,7 +306,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 <script>
 const LOGO_B64='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';
-const S={sched:null,names:{},pdp:{},pdpAt:null,izin:{},izinN:null,scans:null,dates:[],tab:'mx',hol:[],fm:[],sort:'rank',tes:null,pk:null,pkMap:null,pkMiss:[]};
+const S={sched:null,names:{},pdp:{},pdpAt:null,izin:{},izinN:null,scans:null,dates:[],tab:'mx',hol:[],fm:[],sort:'rank',tes:null,pk:null,pkMap:null,pkMiss:[],staf:{}};
 const ACU=['a2f','a2t','a3f','a3t','a3i','a3o','a4f','a4t','a4i','a4o'];
 const DAYS={SENIN:1,SELASA:2,RABU:3,KAMIS:4,JUMAT:5,SABTU:6};
 const HN=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
@@ -393,7 +407,8 @@ const MODE_LB={tes:'Tes',pasca:'Pasca tes',piket:'Piket',reg:'Reguler'};
 const cpEx=o=>({...o,cls:[...(o.cls||[])]});
 function exFor(id,date,dow){
   const md=modeOf(date),pd=S.pdp[id];
-  const staf=()=>({in:tmin($('sm').value),out:tmin($('sp').value),jp:0,cls:[],src:'Jam staf'});
+  const stf=!!S.staf[id];
+  const staf=()=>({in:tmin($('sm').value),out:tmin($('sp').value),jp:0,cls:[],src:stf?'Jam staf (tugas tambahan)':'Jam staf'});
   let ex=null;
   if(md==='piket'){
     /* Piket (rentang libur semester): HANYA peserta di jadwal piket yang punya jadwal; Jadwal Reguler tidak dipakai */
@@ -404,11 +419,12 @@ function exFor(id,date,dow){
   if(md==='tes'){
     const h=S.tes.sched[id];
     const guru=!!h||!!(S.sched&&S.sched[id])||!!(pd&&pd.role==='guru');
-    ex=h&&h[dow]?{...cpEx(h[dow]),src:'Tes'}:guru?null:staf();
+    ex=h&&h[dow]?{...cpEx(h[dow]),src:'Tes'}:(guru&&!stf)?null:staf();
   }else{
     /* Reguler, atau Pasca tes: hari dan orang terjadwal sama dengan reguler; pada pasca tes hanya jamnya diganti jam kerja */
     const h=S.sched&&S.sched[id];
-    ex=h?(h[dow]?{...cpEx(h[dow]),src:'Reguler'}:null):((pd&&pd.role==='guru')?null:staf());
+    /* Guru dengan tugas tambahan staf: jadwal mengajar diabaikan, memakai jam kerja staf setiap hari */
+    ex=stf?staf():h?(h[dow]?{...cpEx(h[dow]),src:'Reguler'}:null):((pd&&pd.role==='guru')?null:staf());
     if(ex&&md==='pasca'){ex.in=tmin($('a3i').value);ex.out=tmin($('a3o').value);ex.src='Pasca tes'}
   }
   return ex;
@@ -507,6 +523,7 @@ function renderPrev(){
       if(miss.length)add('w',`${miss.length} guru terjadwal tidak ada di data fingerprint: ${miss.slice(0,6).map(nameOf).join(', ')}${miss.length>6?'…':''}.`);
       else add('g','Semua guru terjadwal ada di data fingerprint.')}
   }
+  const sn=Object.keys(S.staf||{});if(sn.length)add('g',`${sn.length} guru bertugas tambahan staf, memakai jam staf: ${sn.slice(0,6).map(nameOf).map(esc).join(', ')}${sn.length>6?'…':''}.`);
   if(S.scans)add('g',`Data fingerprint: ${(S.all||[]).length} tanggal (${fd2((S.all||[])[0])} s.d. ${fd2((S.all||[]).slice(-1)[0])}), ${Object.keys(S.scans).length} orang.`);
   else add('w','Data fingerprint belum diunggah (diunggah di tab 4, Hasil rekap).');
   if(S.tes){
@@ -555,6 +572,23 @@ function acuHint(){
   if(w){w.hidden=!C.length;w.innerHTML=C.length?'<b>Tanggal bertabrakan.</b> '+C.map(c=>esc(acuConflictText(c))).join('; ')+'. Jadwal 2, 3, dan 4 tidak boleh bertabrakan. Perbaiki dulu sebelum rekap dihitung atau disimpan.':''}
 }
 /*ACU-END*/
+/*STAF-START*/
+/* ===== Tugas tambahan staf: guru yang dicentang memakai jam kerja staf ===== */
+const stTag=id=>S.staf[id]?' · tugas staf':'';
+function stafSave(){try{localStorage.setItem('staf-v1',JSON.stringify(Object.keys(S.staf)))}catch(e){}}
+function stafSet(arr){S.staf={};(arr||[]).forEach(i=>{const k=String(parseInt(i,10));if(k!=='NaN')S.staf[k]=1});stafSave();renderStaf()}
+function stafCand(){
+  const ids=new Set([...Object.keys(S.sched||{}),...Object.keys(S.pdp||{}).filter(k=>S.pdp[k].role==='guru'),...Object.keys(S.staf||{})]);
+  return [...ids].map(id=>({id,name:nameOf(id)})).sort((a,b)=>a.name.localeCompare(b.name,'id'))}
+function renderStaf(){
+  const el=$('stl');if(!el)return;
+  const q=($('stq').value||'').trim().toLowerCase(),all=stafCand();
+  const L=all.filter(p=>!q||p.name.toLowerCase().includes(q)||p.id===q),n=Object.keys(S.staf).length;
+  $('stn').textContent=all.length?`${n} dari ${all.length} guru bertugas tambahan staf`:'Belum ada data guru. Muat dari database atau unggah jadwal reguler di tab 1.';
+  const top=el.scrollTop;
+  el.innerHTML=L.map(p=>`<label class="stc${S.staf[p.id]?' on':''}"><input type="checkbox" data-id="${p.id}"${S.staf[p.id]?' checked':''}><span>${esc(p.name)}<small>ID ${p.id}</small></span></label>`).join('')||'<div class="empty">'+(all.length?'Tidak ada guru yang cocok.':'')+'</div>';
+  el.scrollTop=top}
+/*STAF-END*/
 const fmOf=d=>S.fm.find(x=>x.d===d);
 const isOff=d=>S.hol.includes(d)||!!fmOf(d);
 function evalDay(id,date){
@@ -622,7 +656,7 @@ function renderSum(sum){
   h+=`<div class="sh"><b>Rekap per guru dan staf</b><span class="sp"></span><label class="hint">Urutkan <select onchange="S.sort=this.value;render()">${[['rank','Tidak hadir, terlambat, menit'],['id','Nomor ID'],['nama','Nama A–Z']].map(([v,t])=>`<option value="${v}"${S.sort===v?' selected':''}>${t}</option>`).join('')}</select></label></div>`;
   h+='<table class="rk"><thead><tr><th class="n">Nama</th><th class="num">Tidak hadir</th><th class="num">Sakit</th><th class="num">Ijin</th><th class="num">Dinas luar</th><th class="num">Terlambat (kali)</th><th class="num">Terlambat (menit)</th><th class="num">Pulang cepat (kali)</th><th class="num">Pulang cepat (menit)</th><th class="num">Tidak absen masuk/pulang</th><th class="num">Hadir</th><th class="num">Hari terjadwal</th><th class="num">Total JP</th><th>Predikat</th></tr></thead><tbody>';
   rows.forEach(o=>{const[pt,pc]=pred(o);
-    h+=`<tr><td class="n">${esc(o.p.name)}<br><small class="hint">ID ${o.p.id}</small></td><td class="num">${z(o.abs,'r')}</td><td class="num">${z(o.sk,'b')}</td><td class="num">${z(o.ij,'b')}</td><td class="num">${z(o.dl,'b')}</td><td class="num">${z(o.late,'y')}</td><td class="num">${z(o.lm,'y')}</td><td class="num">${z(o.early,'y')}</td><td class="num">${z(o.em,'y')}</td><td class="num">${z(o.miss,'y')}</td><td class="num">${o.hadir}</td><td class="num">${o.ndays}</td><td class="num">${o.jp}</td><td><span class="pl ${pc}">${pt}</span></td></tr>`});
+    h+=`<tr><td class="n">${esc(o.p.name)}<br><small class="hint">ID ${o.p.id}${stTag(o.p.id)}</small></td><td class="num">${z(o.abs,'r')}</td><td class="num">${z(o.sk,'b')}</td><td class="num">${z(o.ij,'b')}</td><td class="num">${z(o.dl,'b')}</td><td class="num">${z(o.late,'y')}</td><td class="num">${z(o.lm,'y')}</td><td class="num">${z(o.early,'y')}</td><td class="num">${z(o.em,'y')}</td><td class="num">${z(o.miss,'y')}</td><td class="num">${o.hadir}</td><td class="num">${o.ndays}</td><td class="num">${o.jp}</td><td><span class="pl ${pc}">${pt}</span></td></tr>`});
   h+=`</tbody><tfoot><tr><td class="n" style="background:var(--card)">Total</td><td class="num">${T.a}</td><td class="num">${T.sk}</td><td class="num">${T.ij}</td><td class="num">${T.dl}</td><td class="num">${T.l}</td><td class="num">${T.m}</td><td class="num">${T.e}</td><td class="num">${T.em}</td><td class="num">${T.x}</td><td class="num">${T.h}</td><td class="num">${T.n}</td><td class="num">${T.j}</td><td></td></tr></tfoot></table>`;
   h+='<p class="hint" style="margin:10px 0 0">Predikat: Sangat Baik = tidak ada tidak hadir, terlambat, pulang cepat, atau kurang scan. Baik = tidak pernah tidak hadir dan terlambat paling banyak 25% dari hari terjadwal. Cukup = tidak hadir paling banyak 25% dari hari terjadwal. Kurang = selebihnya. Hari sakit, ijin dan dinas luar (dari aplikasi ijin di pdp) tidak dihitung sebagai tidak hadir, tetapi tetap termasuk hari terjadwal. Tanggal libur dan force majeure (mis. mesin fingerprint rusak) dikecualikan dari perhitungan.</p>';
   return h+'</div>';
@@ -651,7 +685,7 @@ function cellHtml(r){
 }
 
 function render(){
-  acuHint();if(!$('p2').hidden)renderPrev();
+  acuHint();renderStaf();if(!$('p2').hidden)renderPrev();
   const out=$('out');
   const _ac=acuConflicts();
   if(_ac.length){out.innerHTML='<div class="empty"><b style="color:var(--bad)">Rekap tidak dihitung: tanggal Jadwal 2, 3, dan 4 bertabrakan.</b><br>'+_ac.map(c=>esc(acuConflictText(c))).join('<br>')+'<br>Perbaiki tanggal di tab 3 (Pengaturan).</div>';return}
@@ -660,7 +694,7 @@ function render(){
   const{P,det,sum}=compute();let h='';
   if(S.tab==='mx'){
     h='<table><thead><tr><th class="n">Nama</th>'+S.dates.map(d=>{const dt=new Date(d+'T00:00:00Z');const mo=modeOf(d);return `<th>${HN[dt.getUTCDay()]}, ${d.slice(8)}/${d.slice(5,7)}${mo!=='reg'?`<small class="mo">${MODE_LB[mo]}</small>`:''}</th>`}).join('')+'</tr></thead><tbody>';
-    P.forEach(p=>{h+=`<tr><td class="n">${esc(p.name)}<br><small>ID ${p.id}</small></td>`+S.dates.map(d=>`<td>${cellHtml(det.find(x=>x.p===p&&x.d===d).r)}</td>`).join('')+'</tr>'});
+    P.forEach(p=>{h+=`<tr><td class="n">${esc(p.name)}<br><small>ID ${p.id}${stTag(p.id)}</small></td>`+S.dates.map(d=>`<td>${cellHtml(det.find(x=>x.p===p&&x.d===d).r)}</td>`).join('')+'</tr>'});
   }else if(S.tab==='rg'){h=renderSum(sum);}else if(S.tab==='rg0'){
     h='<table><thead><tr><th class="n">Nama</th><th class="num">Hari terjadwal</th><th class="num">Hadir</th><th class="num">Tidak hadir</th><th class="num">Terlambat</th><th class="num">Total terlambat (mnt)</th><th class="num">Pulang cepat</th><th class="num">Tidak absen masuk/pulang</th><th class="num">Total JP</th></tr></thead><tbody>';
     sum.forEach(o=>h+=`<tr><td class="n">${esc(o.p.name)}</td><td class="num">${o.ndays}</td><td class="num">${o.hadir}</td><td class="num">${o.abs}</td><td class="num">${o.late}</td><td class="num">${o.lm}</td><td class="num">${o.early}</td><td class="num">${o.miss}</td><td class="num">${o.jp}</td></tr>`);
@@ -1000,6 +1034,7 @@ try{const s=JSON.parse(localStorage.getItem('jadwal-v1')||'null');
   if(s){S.sched=s.s;S.names=s.n;$('m1').textContent=`✓ ${s.f} (tersimpan di browser ini) · ${Object.keys(s.s).length} guru terjadwal`;$('d1').classList.add('on')}}catch(e){}
 try{const t=JSON.parse(localStorage.getItem('tes-v1')||'null');if(t&&t.sched)S.tes=t}catch(e){}
 try{const p=JSON.parse(localStorage.getItem('pk-v1')||'null');if(p&&p.list)S.pk=p}catch(e){}
+try{const sf=JSON.parse(localStorage.getItem('staf-v1')||'[]');if(Array.isArray(sf))sf.forEach(i=>{const k=String(parseInt(i,10));if(k!=='NaN')S.staf[k]=1})}catch(e){}
 setAcuanMsg();
 
 /* ===== Database Supabase: jadwal acuan, pengaturan, dan hasil rekap ===== */
@@ -1024,7 +1059,7 @@ function dbErr(e,ctx){
 }
 
 const putCfg=(key,value)=>dbx('/absen_config?on_conflict=key',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key,value,updated_at:new Date().toISOString()})});
-const getSet=()=>({tm:$('tm').value,tp:$('tp').value,dm:$('dm').value,dp:$('dp').value,sm:$('sm').value,sp:$('sp').value,hol:S.hol,fm:S.fm,...Object.fromEntries(ACU.map(k=>[k,$(k).value]))});
+const getSet=()=>({staf:Object.keys(S.staf||{}),tm:$('tm').value,tp:$('tp').value,dm:$('dm').value,dp:$('dp').value,sm:$('sm').value,sp:$('sp').value,hol:S.hol,fm:S.fm,...Object.fromEntries(ACU.map(k=>[k,$(k).value]))});
 
 async function saveJadwal(){
   if(!S.sched)return;
@@ -1083,7 +1118,7 @@ async function loadDB(){
     if(m.pengaturan&&m.pengaturan.value){const v=m.pengaturan.value;
       ['tm','tp','dm','dp','sm','sp'].forEach(k=>{if(v[k]!=null&&v[k]!=='')$(k).value=v[k]});
       S.hol=Array.isArray(v.hol)?v.hol:[];renderHol();
-      S.fm=normFm(v.fm);renderFm();applyPeriod();ACU.forEach(k=>{if(v[k]!=null)$(k).value=v[k]});acuSync();got.push('pengaturan')}
+      S.fm=normFm(v.fm);renderFm();applyPeriod();if(Array.isArray(v.staf))stafSet(v.staf);ACU.forEach(k=>{if(v[k]!=null)$(k).value=v[k]});acuSync();got.push('pengaturan')}
     if(m.kode_mesin&&m.kode_mesin.value&&Array.isArray(m.kode_mesin.value.items)){const v=m.kode_mesin.value;
       S.pdp={};v.items.forEach(i=>{const k=String(parseInt(i.id,10));if(k!=='NaN')S.pdp[k]={nama:i.nama,role:i.role}});S.pdpAt=v.synced_at||null;
       got.push('data guru/staf dari pdp ('+Object.keys(S.pdp).length+', sinkron '+(S.pdpAt?new Date(S.pdpAt).toLocaleString('id-ID'):'-')+')')}
@@ -1144,7 +1179,7 @@ async function bukaRekap(id){
     const st=x.pengaturan||{};
     ['tm','tp','dm','dp','sm','sp'].forEach(k=>{if(st[k]!=null&&st[k]!=='')$(k).value=st[k]});
     S.hol=Array.isArray(st.hol)?st.hol:[];renderHol();
-    S.fm=normFm(st.fm);renderFm();
+    S.fm=normFm(st.fm);renderFm();stafSet(Array.isArray(st.staf)?st.staf:[]);
     S.sched=x.jadwal.sched;S.names=x.jadwal.names||{};S.jfile=x.jadwal.file||'';
     S.tes=x.jadwal.tes||null;S.pk=x.jadwal.pk||null;ACU.forEach(k=>{$(k).value=st[k]!=null?st[k]:''});acuSync();setAcuanMsg();
     S.scans=x.scans.scans;S.all=x.scans.all||[];S.fpNames=x.scans.names||{};
@@ -1172,6 +1207,12 @@ $('rkhist').addEventListener('click',()=>{const p=$('rkpanel');if(!p.hidden){p.h
 $('rkpanel').addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b)return;
   b.dataset.a==='open'?bukaRekap(b.dataset.id):hapusRekap(b.dataset.id)});
 ['tm','tp','dm','dp','sm','sp'].forEach(i=>$(i).addEventListener('input',autoSaveSet));
+$('stl').addEventListener('change',e=>{const c=e.target.closest('input[data-id]');if(!c)return;
+  if(c.checked)S.staf[c.dataset.id]=1;else delete S.staf[c.dataset.id];
+  stafSave();autoSaveSet();render()});
+$('stq').addEventListener('input',renderStaf);
+$('stclr').addEventListener('click',()=>{if(!Object.keys(S.staf).length||!confirm('Hapus semua tanda tugas tambahan staf?'))return;stafSet([]);autoSaveSet();render()});
+renderStaf();
 loadDB();
 </script>
 </body>
