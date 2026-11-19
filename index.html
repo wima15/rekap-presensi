@@ -38,6 +38,8 @@ input[type=search]{width:200px}
 .tab:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .sp{flex:1}
 .exp.pdf{background:var(--acc);color:#fff}
+#mxbox{display:inline-flex;gap:6px;align-items:center}#mxbox[hidden]{display:none}
+#mxm{font:inherit;font-weight:600;padding:7px 8px;border:1px solid var(--acc);border-radius:8px;background:var(--card);color:var(--ink);max-width:210px}
 .exp{font:inherit;font-weight:600;padding:8px 14px;border-radius:8px;border:0;background:var(--ink);color:var(--bg);cursor:pointer}
 .wrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:10px}
 table{border-collapse:collapse;width:100%;font-size:14px}
@@ -262,6 +264,7 @@ td.bd2{color:var(--bad);font-weight:600}
 <label class="hint">Cari nama <input type="search" id="q" placeholder="Nama guru"></label>
 <span class="sp"></span>
 <button class="exp dbb" id="rksave" type="button">Simpan rekap ke database</button>
+<span id="mxbox"><select id="mxm" aria-label="Pilih bulan untuk PDF matriks harian"><option value="all">Semua bulan (1 file)</option></select><button class="exp pdf" id="pdfmx" type="button">Unduh PDF matriks harian</button></span>
 <button class="exp pdf" id="pdf">Unduh PDF</button>
 <button class="exp" id="ex">Unduh Excel</button>
 </div>
@@ -695,6 +698,7 @@ function cellHtml(r){
 }
 
 function render(){
+  fillMxMonths();$('mxbox').hidden=S.tab!=='mx';
   acuHint();renderStaf();if(!$('p2').hidden)renderPrev();
   const out=$('out');
   const _ac=acuConflicts();
@@ -919,6 +923,151 @@ async function exportPdf(){
   dl('rekap-absen-fingerprint'+(S.dates[0]?'-'+S.dates[0]:'')+'.pdf',new Blob([bytes],{type:'application/pdf'}));
 }
 
+/* ===== PDF Matriks harian: 1 bulan = 1 bagian (halaman baru), landscape A4 ===== */
+const BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const mlabel=k=>BLN[+k.slice(5,7)-1]+' '+k.slice(0,4);
+function fillMxMonths(){
+  const sel=$('mxm');if(!sel)return;
+  const ms=[...new Set((S.dates||[]).map(d=>d.slice(0,7)))],sig=ms.join(',');
+  if(sel.dataset.sig===sig)return;
+  const cur=sel.value;sel.dataset.sig=sig;
+  sel.innerHTML='<option value="all">Semua bulan (1 file)</option>'+ms.map(m=>`<option value="${m}">${mlabel(m)}</option>`).join('');
+  sel.value=(cur==='all'||ms.includes(cur))?cur:'all';
+}
+async function exportMatrixPdf(){
+  if(acuBlocked())return;
+  if(!S.scans||!S.sched)return alert('Unggah jadwal dan fingerprint terlebih dahulu.');
+  if(!S.dates.length)return alert('Tidak ada data fingerprint pada periode yang dipilih.');
+  if(!window.PDFLib)return alert('Pustaka PDF tidak termuat.');
+  const btn=$('pdfmx'),lbl=btn.textContent;btn.disabled=true;btn.textContent='Membuat PDF…';
+  try{await buildMatrixPdf()}catch(e){console.error(e);alert('Gagal membuat PDF matriks: '+(e&&e.message||e))}
+  finally{btn.disabled=false;btn.textContent=lbl}
+}
+async function buildMatrixPdf(){
+  const pick=$('mxm').value||'all';
+  /* semua guru ikut tercetak, pencarian nama tidak memfilter PDF */
+  const qv=$('q').value;$('q').value='';let P,det;
+  try{const r=compute();P=r.P;det=r.det}finally{$('q').value=qv}
+  if(!P.length)return alert('Tidak ada data guru untuk dibuat PDF.');
+  const months=[...new Set(S.dates.map(d=>d.slice(0,7)))].filter(m=>pick==='all'||m===pick);
+  if(!months.length)return alert('Bulan yang dipilih tidak punya data.');
+  const rm=new Map();det.forEach(x=>rm.set(x.p.id+'|'+x.d,x.r));
+  const{PDFDocument,StandardFonts,rgb}=PDFLib;
+  const doc=await PDFDocument.create();
+  doc.setTitle('Matriks Presensi Harian');doc.setCreator('Rekap Absen Fingerprint');
+  const F=await doc.embedFont(StandardFonts.Helvetica),FB=await doc.embedFont(StandardFonts.HelveticaBold);
+  const PW=841.89,PH=595.28,M=22,BOT=30,c=a=>rgb(a[0]/255,a[1]/255,a[2]/255);
+  const safe=s=>String(s).replace(/[^\x20-\x7E\xA0-\xFF\u2013\u2014\u2018\u2019\u201C\u201D\u2022]/g,'?');
+  let logo=null;try{logo=await doc.embedPng(Uint8Array.from(atob(LOGO_B64),ch=>ch.charCodeAt(0)))}catch(e){}
+  let pg,y,pmonth=[];
+  const tw=(s,sz,f)=>f.widthOfTextAtSize(safe(s),sz);
+  const T0=(s,x,yy,sz,f,col,al)=>{s=safe(s);const w=f.widthOfTextAtSize(s,sz);pg.drawText(s,{x:al==='c'?x-w/2:al==='r'?x-w:x,y:yy,size:sz,font:f,color:c(col)})};
+  const R0=(x,yy,w,h,bg,bd)=>pg.drawRectangle({x,y:yy,width:w,height:h,color:c(bg),...(bd?{borderColor:c(bd),borderWidth:.6}:{})});
+  const wrap=(s,w,sz,f)=>{const out=[];let line='';String(s).split(' ').forEach(wd=>{const t=line?line+' '+wd:wd;if(!line||tw(t,sz,f)<=w)line=t;else{out.push(line);line=wd}});out.push(line);return out};
+  const ACC=[13,107,107],INK=[18,38,58],MUTE=[100,110,120],RED=[180,35,24];
+  const HS={sakit:'Sakit',ijin:'Ijin',dinas_luar:'DL'},MS={tes:'Tes',pasca:'Pasca',piket:'Piket'};
+  const hm2=v=>v==null?'--':hm(v);
+  const fmtDate=new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+
+  /* ukuran kolom */
+  const nameW=106,sumLb=[['Hadir'],['Telat'],['Tdk','hadir'],['S/I/','DL']],sumC=['ok','late','bad','izin'],sumW=22,sumT=sumLb.length*sumW;
+  const area=PW-2*M-nameW-sumT;
+
+  for(const mk of months){
+    const ds=S.dates.filter(d=>d.startsWith(mk)),nd=ds.length;
+    const cw=Math.min(28,area/nd),fs=Math.min(6.6,Math.max(5,cw*.28)),lhc=fs*1.22,rh=Math.round((lhc*2+5)*10)/10;
+    const hH=29,fH=15,tabW=nameW+cw*nd+sumT;
+    const x0=M+(PW-2*M-tabW)/2;                       /* tabel di tengah bila kolom sedikit */
+    const monthTxt=mlabel(mk);
+    /* ringkasan per orang untuk bulan ini */
+    const agg=p=>{const o=[0,0,0,0];ds.forEach(d=>{const r=rm.get(p.id+'|'+d);if(!r||!r.ex)return;
+      if(r.izin){o[3]++;return}
+      if(r.inT==null&&r.outT==null)o[2]++;else{o[0]++;if(r.late)o[1]++}});return o};
+    const sums=P.map(agg);
+    const perDay=ds.map(d=>P.reduce((n,p)=>{const r=rm.get(p.id+'|'+d);return n+(r&&(r.inT!=null||r.outT!=null)?1:0)},0));
+
+    const newPage=first=>{
+      pg=doc.addPage([PW,PH]);pmonth.push(monthTxt);
+      if(first){
+        R0(0,PH-58,PW,58,ACC);R0(0,PH-61,PW,3,[79,195,192]);
+        let tx=M;
+        if(logo){const lh=44,lw=lh*logo.width/logo.height;pg.drawCircle({x:M+lh/2,y:PH-29,size:lh/2+2,color:c([255,255,255])});
+          pg.drawImage(logo,{x:M+lh/2-lw/2*.86,y:PH-29-lh/2*.86,width:lw*.86,height:lh*.86});tx=M+lh+14}
+        T0('SMK WIDYA MANDALA TAMBAK',tx,PH-19,8,FB,[200,235,234]);
+        T0('Matriks Presensi Harian',tx,PH-39,18,FB,[255,255,255]);
+        T0('Jam scan masuk dan pulang tiap guru dan staf',tx,PH-52,8,F,[200,235,234]);
+        T0(monthTxt,PW-M,PH-30,21,FB,[255,255,255],'r');
+        T0(P.length+' orang  |  '+nd+' tanggal',PW-M,PH-47,8.5,F,[200,235,234],'r');
+        y=PH-61-11;
+        /* legenda */
+        const L=[['ok','07:00','Tepat waktu'],['late','07:20','Terlambat / pulang cepat'],['bad','Tidak','Tidak hadir / kurang scan'],['izin','Sakit','Sakit / Ijin / Dinas luar (DL)'],['fm','FM','Force Majeure'],['none','Libur','Libur / tanpa jadwal']];
+        let lx=x0;
+        L.forEach(it=>{const k=CL[it[0]];R0(lx,y-9,24,11,k[0]);T0(it[1],lx+12,y-6,5.6,FB,k[1],'c');T0(it[2],lx+29,y-6.3,7,F,INK);lx+=29+tw(it[2],7,F)+14});
+        y-=17;
+        wrap('Tiap sel: jam masuk (atas) dan jam pulang (bawah). Angka tebal = jam penyebab terlambat / pulang cepat, tanda -- = tidak scan. Header merah = hari Minggu / libur. Tes, Pasca, Piket = acuan jadwal khusus pada tanggal itu. Kolom kanan = ringkasan bulan ini: hadir, terlambat (kali), tidak hadir (kali), sakit / ijin / dinas luar (hari).',tabW,6.6,F)
+          .forEach(l=>{T0(l,x0,y,6.6,F,MUTE);y-=9});
+        y-=4;
+      }else{
+        R0(0,PH-22,PW,22,ACC);R0(0,PH-24,PW,2,[79,195,192]);
+        T0('Matriks Presensi Harian',M,PH-15,9.5,FB,[255,255,255]);
+        T0(monthTxt+' (lanjutan)',PW-M,PH-15,9.5,FB,[255,255,255],'r');
+        y=PH-24-9;
+      }
+      /* header tabel */
+      R0(x0,y-hH,nameW,hH,INK,[255,255,255]);T0('Nama',x0+6,y-hH/2-2.5,7.5,FB,[255,255,255]);
+      ds.forEach((d,i)=>{const dow=new Date(d+'T00:00:00Z').getUTCDay(),off=dow===0||S.hol.includes(d),x=x0+nameW+i*cw,mo=modeOf(d);
+        R0(x,y-hH,cw,hH,off?RED:ACC,[255,255,255]);
+        T0(HN[dow].slice(0,3),x+cw/2,y-8.5,5.4,FB,[255,255,255],'c');
+        T0(String(+d.slice(8)),x+cw/2,y-18.5,8.2,FB,[255,255,255],'c');
+        if(mo!=='reg')T0(MS[mo],x+cw/2,y-25.5,4.6,FB,[255,236,170],'c')});
+      sumLb.forEach((lb,i)=>{const x=x0+nameW+cw*nd+i*sumW;R0(x,y-hH,sumW,hH,INK,[255,255,255]);
+        lb.forEach((s,k)=>T0(s,x+sumW/2,y-(lb.length===1?hH/2+2:11+k*8.5),6,FB,[255,255,255],'c'))});
+      y-=hH;
+    };
+    newPage(true);
+
+    P.forEach((p,i)=>{
+      const last=i===P.length-1;
+      if(y-rh-(last?fH:0)<BOT)newPage(false);
+      const yt=y,zb=i%2?[243,246,248]:[255,255,255];
+      /* nama */
+      R0(x0,yt-rh,nameW,rh,zb,[211,220,228]);
+      let nl=wrap((i+1)+'. '+p.name,nameW-9,6.4,FB);
+      if(nl.length>2){nl=nl.slice(0,2);let t=nl[1];while(t.length>1&&tw(t+'...',6.4,FB)>nameW-9)t=t.slice(0,-1);nl[1]=t+'...'}
+      const nh=nl.length*7.4,ns=yt-(rh-nh)/2;
+      nl.forEach((s,k)=>T0(s,x0+5,ns-k*7.4-5.6,6.4,FB,INK));
+      /* sel harian */
+      ds.forEach((d,j)=>{
+        const r=rm.get(p.id+'|'+d),x=x0+nameW+j*cw,k=CL[r.st]||CL.none,none=r.inT==null&&r.outT==null;
+        R0(x,yt-rh,cw,rh,k[0],[255,255,255]);
+        let lines,bold;
+        if(none){lines=r.izin?[HS[r.izin]||'Ijin']:r.ex?['Tidak','hadir']:r.hol?['Libur']:r.fm?['FM']:['-'];bold=[1,1]}
+        else{lines=[hm2(r.inT),hm2(r.outT)];bold=[r.late||r.inT==null?1:0,r.early||r.outT==null?1:0]}
+        const th=lines.length*lhc,ys=yt-(rh-th)/2;
+        lines.forEach((s,q)=>T0(s,x+cw/2,ys-q*lhc-fs*.82,fs,bold[q]?FB:F,k[1],'c'))});
+      /* ringkasan */
+      sums[i].forEach((v,q)=>{const x=x0+nameW+cw*nd+q*sumW,kk=CL[sumC[q]];
+        R0(x,yt-rh,sumW,rh,v>0?kk[0]:zb,[211,220,228]);
+        T0(String(v),x+sumW/2,yt-rh/2-3,7.6,v>0?FB:F,v>0?kk[1]:[150,160,170],'c')});
+      y-=rh;
+    });
+    /* baris jumlah hadir per tanggal */
+    R0(x0,y-fH,nameW,fH,INK);T0('Jumlah hadir',x0+6,y-fH/2-2.3,6.8,FB,[255,255,255]);
+    perDay.forEach((v,j)=>{const x=x0+nameW+j*cw;R0(x,y-fH,cw,fH,INK,[60,80,100]);T0(String(v),x+cw/2,y-fH/2-2.4,6.8,FB,[255,255,255],'c')});
+    const tot=sums.reduce((a,o)=>o.map((v,q)=>v+a[q]),[0,0,0,0]);
+    tot.forEach((v,q)=>{const x=x0+nameW+cw*nd+q*sumW;R0(x,y-fH,sumW,fH,INK,[60,80,100]);T0(String(v),x+sumW/2,y-fH/2-2.4,6.8,FB,[255,255,255],'c')});
+    y-=fH;
+  }
+  const pages=doc.getPages();
+  pages.forEach((p,i)=>{pg=p;
+    p.drawLine({start:{x:M,y:22},end:{x:PW-M,y:22},thickness:.5,color:c([211,220,228])});
+    T0('Dicetak '+fmtDate,M,11,7,F,[120,130,140]);
+    T0('Matriks Presensi Harian - '+pmonth[i],PW/2,11,7,F,[120,130,140],'c');
+    T0('Halaman '+(i+1)+' dari '+pages.length,PW-M,11,7,F,[120,130,140],'r')});
+  const bytes=await doc.save();
+  await dl('matriks-presensi-harian-'+months[0]+(months.length>1?'_sd_'+months[months.length-1]:'')+'.pdf',new Blob([bytes],{type:'application/pdf'}));
+}
+
 function applyPeriod(){
   const a=S.all||[],f=$('pf').value,t=$('pt').value;
   S.dates=a.filter(d=>(!f||d>=f)&&(!t||d<=t));
@@ -1040,6 +1189,7 @@ $('tpl4').addEventListener('click',async()=>{
   const R=[0,1].map(i=>Object.fromEntries(n.map((h,j)=>[h,ct[j][i]||''])));
   dl('template-jadwal-piket.xlsx',await makeXlsx([['PIKET',R]]))});
 $('pdf').addEventListener('click',exportPdf);
+$('pdfmx').addEventListener('click',exportMatrixPdf);
 try{const s=JSON.parse(localStorage.getItem('jadwal-v1')||'null');
   if(s){S.sched=s.s;S.names=s.n;$('m1').textContent=`✓ ${s.f} (tersimpan di browser ini) · ${Object.keys(s.s).length} guru terjadwal`;$('d1').classList.add('on')}}catch(e){}
 try{const t=JSON.parse(localStorage.getItem('tes-v1')||'null');if(t&&t.sched)S.tes=t}catch(e){}
