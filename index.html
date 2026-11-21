@@ -57,6 +57,12 @@ th.n{background:var(--nonebg)}
 .num{text-align:right}
 .hol{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 14px;background:var(--card);padding:12px 14px;border-radius:10px;border:1px solid var(--line)}
 .hol label{font-size:13px;color:var(--mute);display:flex;flex-direction:column;gap:3px}
+.sdw{flex-basis:100%;border-top:1px dashed var(--line);padding-top:10px}
+.sdg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:6px}
+.sdg .sd{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px}
+.sdg .sd b{font-size:13px}
+.sdg .sd div{display:flex;gap:6px;align-items:center}
+.sdg .sd input{min-width:0;flex:1}
 .hol input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
 .add{font:inherit;font-weight:600;padding:8px 14px;border-radius:8px;border:0;background:var(--acc);color:#fff;cursor:pointer}
 #hl,#fl{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:200px}
@@ -195,8 +201,12 @@ td.bd2{color:var(--bad);font-weight:600}
 <label>Toleransi pulang cepat (menit)<input type="number" id="tp" value="0" min="0"></label>
 <label>Tidak absen masuk dihitung terlambat (menit)<input type="number" id="dm" value="60" min="0"></label>
 <label>Tidak absen pulang dihitung pulang cepat (menit)<input type="number" id="dp" value="60" min="0"></label>
-<label>Jam masuk staf<input type="time" id="sm" value="07:00"></label>
-<label>Jam pulang staf<input type="time" id="sp" value="14:00"></label>
+<label>Jam masuk staf (standar)<input type="time" id="sm" value="07:00"></label>
+<label>Jam pulang staf (standar)<input type="time" id="sp" value="14:00"></label>
+<div class="sdw">
+<div class="sh"><b>Jam kerja staf per hari</b><span class="hint">Kosongkan jam masuk dan pulang pada suatu hari untuk memakai jam standar di atas.</span><span class="sp"></span><button class="tab" id="sdcp" type="button">Samakan semua hari dengan standar</button></div>
+<div class="sdg" id="sdg"></div>
+</div>
 <label>Periode awal<input type="date" id="pf"></label>
 <label>Periode akhir<input type="date" id="pt"></label>
 <button class="add" id="pr" type="button">Semua tanggal</button>
@@ -322,6 +332,20 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const hm=s=>s==null?'–':String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor(s%3600/60)).padStart(2,'0');
 const tmin=v=>{const[a,b]=v.split(':');return (+a*60+ +b)*60};
+/* Jam kerja staf per hari (1=Senin ... 6=Sabtu). Kosong = pakai jam staf standar (sm/sp) */
+const SD_DAYS=[1,2,3,4,5,6];
+const SDK=SD_DAYS.flatMap(d=>['sm'+d,'sp'+d]);
+(function(){const g=document.getElementById('sdg');if(!g)return;
+  g.innerHTML=SD_DAYS.map(d=>`<div class="sd"><b>${HN[d]}</b><div><input type="time" id="sm${d}" aria-label="Jam masuk ${HN[d]}"><span>–</span><input type="time" id="sp${d}" aria-label="Jam pulang ${HN[d]}"></div></div>`).join('')})();
+function stafJam(dow){
+  const a=$('sm'+dow),b=$('sp'+dow);
+  const i=(a&&a.value)||$('sm').value,o=(b&&b.value)||$('sp').value;
+  return {in:tmin(i),out:tmin(o)}}
+function stafTxt(){
+  const std=$('sm').value+'-'+$('sp').value;
+  const per=SD_DAYS.map(d=>{const j=stafJam(d);return [HN[d],hm(j.in)+'-'+hm(j.out)]});
+  if(per.every(x=>x[1]===std))return 'Jam staf '+std;
+  return 'Jam staf '+per.map(x=>x[0]+' '+x[1]).join(', ')}
 
 function readWB(file,cb){const r=new FileReader();r.onload=async e=>{const buf=e.target.result;let wb=null;
   try{if(window.XLSX&&XLSX.read)wb=XLSX.read(buf,{type:'array'})}catch(x){wb=null}
@@ -415,7 +439,7 @@ const cpEx=o=>({...o,cls:[...(o.cls||[])]});
 function exFor(id,date,dow){
   const md=modeOf(date),pd=S.pdp[id];
   const stf=!!S.staf[id];
-  const staf=()=>({in:tmin($('sm').value),out:tmin($('sp').value),jp:0,cls:[],src:stf?'Jam staf (tugas tambahan)':'Jam staf'});
+  const staf=()=>({in:stafJam(dow).in,out:stafJam(dow).out,jp:0,cls:[],src:stf?'Jam staf (tugas tambahan)':'Jam staf'});
   let ex=null;
   if(md==='piket'){
     /* Piket (rentang libur semester): HANYA peserta di jadwal piket yang punya jadwal; Jadwal Reguler tidak dipakai */
@@ -891,7 +915,7 @@ async function exportPdf(){
     if($('a3f').value&&$('a3t').value&&$('a3i').value&&$('a3o').value)p.push('Pasca tes '+r($('a3f').value,$('a3t').value)+' ('+$('a3i').value+'-'+$('a3o').value+')');
     if(S.pk&&$('a4f').value&&$('a4t').value&&$('a4i').value&&$('a4o').value)p.push('Piket '+r($('a4f').value,$('a4t').value)+' ('+$('a4i').value+'-'+$('a4o').value+')');
     return p.length?'  |  Acuan tambahan: '+p.join('; '):''})();
-  wrap(`Toleransi terlambat ${$('tm').value} menit  |  Toleransi pulang cepat ${$('tp').value} menit  |  Tidak absen masuk=terlambat ${$('dm').value} mnt, tidak absen pulang=pulang cepat ${$('dp').value} mnt  |  Jam staf ${$('sm').value}-${$('sp').value}  |  Hari libur: ${hol}  |  Force Majeure: ${fmT}${acuTxt}`,PW-2*M,8.5,F).forEach(l=>{T0(l,M,y,8.5,F,[70,80,90]);y-=12});
+  wrap(`Toleransi terlambat ${$('tm').value} menit  |  Toleransi pulang cepat ${$('tp').value} menit  |  Tidak absen masuk=terlambat ${$('dm').value} mnt, tidak absen pulang=pulang cepat ${$('dp').value} mnt  |  ${stafTxt()}  |  Hari libur: ${hol}  |  Force Majeure: ${fmT}${acuTxt}`,PW-2*M,8.5,F).forEach(l=>{T0(l,M,y,8.5,F,[70,80,90]);y-=12});
   const note=wrap('Predikat: Sangat Baik = tidak ada tidak hadir, terlambat, pulang cepat, atau kurang scan. Baik = tidak pernah tidak hadir dan terlambat paling banyak 25% dari hari terjadwal. Cukup = tidak hadir paling banyak 25% dari hari terjadwal. Kurang = selebihnya. Terlambat dihitung dari jam pelajaran pertama masing-masing guru pada hari itu. DL = dinas luar; hari sakit, ijin dan dinas luar tidak dihitung tidak hadir. Hari libur dan force majeure (mis. mesin fingerprint rusak) dikecualikan dari perhitungan.',PW-2*M,7.5,F);
   note.forEach(l=>{T0(l,M,y,7.5,F,[100,110,120]);y-=10});
   y-=4;const kp=[['Kehadiran',pct+'%',[27,127,75]],['Tidak hadir',T.a+'x',[180,35,24]],['Terlambat',T.l+'x ('+T.m+' menit)',[161,92,0]],['Pulang cepat',T.e+'x ('+T.em+' menit)',[161,92,0]]];
@@ -1096,7 +1120,7 @@ bind('f2','d2','m2',(wb,file)=>{
   const r=parseFP(wb);S.scans=r.scans;S.all=r.dates;S.fpNames=r.names;applyPeriod();
   $('m2').style.color='';$('m2').textContent=`✓ ${file.name} · ${r.dates.length} tanggal, ${Object.keys(r.scans).length} orang`;
 });
-['tm','tp','dm','dp','sm','sp','q'].forEach(i=>$(i).addEventListener('input',render));
+['tm','tp','dm','dp','sm','sp',...SDK,'q'].forEach(i=>$(i).addEventListener('input',render));
 acuSync();
 ACU.forEach(i=>$(i).addEventListener('input',()=>{
   const m=/^a([234])[ft]$/.exec(i);
@@ -1219,7 +1243,7 @@ function dbErr(e,ctx){
 }
 
 const putCfg=(key,value)=>dbx('/absen_config?on_conflict=key',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key,value,updated_at:new Date().toISOString()})});
-const getSet=()=>({staf:Object.keys(S.staf||{}),tm:$('tm').value,tp:$('tp').value,dm:$('dm').value,dp:$('dp').value,sm:$('sm').value,sp:$('sp').value,hol:S.hol,fm:S.fm,...Object.fromEntries(ACU.map(k=>[k,$(k).value]))});
+const getSet=()=>({staf:Object.keys(S.staf||{}),tm:$('tm').value,tp:$('tp').value,dm:$('dm').value,dp:$('dp').value,sm:$('sm').value,sp:$('sp').value,...Object.fromEntries(SDK.map(k=>[k,$(k).value])),hol:S.hol,fm:S.fm,...Object.fromEntries(ACU.map(k=>[k,$(k).value]))});
 
 async function saveJadwal(){
   if(!S.sched)return;
@@ -1277,6 +1301,7 @@ async function loadDB(){
     const m={};rows.forEach(r=>m[r.key]=r);const got=[];
     if(m.pengaturan&&m.pengaturan.value){const v=m.pengaturan.value;
       ['tm','tp','dm','dp','sm','sp'].forEach(k=>{if(v[k]!=null&&v[k]!=='')$(k).value=v[k]});
+      SDK.forEach(k=>{$(k).value=v[k]||''});
       S.hol=Array.isArray(v.hol)?v.hol:[];renderHol();
       S.fm=normFm(v.fm);renderFm();applyPeriod();if(Array.isArray(v.staf))stafSet(v.staf);ACU.forEach(k=>{if(v[k]!=null)$(k).value=v[k]});acuSync();got.push('pengaturan')}
     if(m.kode_mesin&&m.kode_mesin.value&&Array.isArray(m.kode_mesin.value.items)){const v=m.kode_mesin.value;
@@ -1338,6 +1363,7 @@ async function bukaRekap(id){
     const x=r&&r[0];if(!x)throw new Error('Rekap tidak ditemukan.');
     const st=x.pengaturan||{};
     ['tm','tp','dm','dp','sm','sp'].forEach(k=>{if(st[k]!=null&&st[k]!=='')$(k).value=st[k]});
+    SDK.forEach(k=>{$(k).value=st[k]||''});
     S.hol=Array.isArray(st.hol)?st.hol:[];renderHol();
     S.fm=normFm(st.fm);renderFm();stafSet(Array.isArray(st.staf)?st.staf:[]);
     S.sched=x.jadwal.sched;S.names=x.jadwal.names||{};S.jfile=x.jadwal.file||'';
@@ -1366,7 +1392,8 @@ new MutationObserver(()=>{$('rkhist').textContent=$('rkpanel').hidden?'Riwayat r
 $('rkhist').addEventListener('click',()=>{const p=$('rkpanel');if(!p.hidden){p.hidden=true;return}listRekap()});
 $('rkpanel').addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b)return;
   b.dataset.a==='open'?bukaRekap(b.dataset.id):hapusRekap(b.dataset.id)});
-['tm','tp','dm','dp','sm','sp'].forEach(i=>$(i).addEventListener('input',autoSaveSet));
+['tm','tp','dm','dp','sm','sp',...SDK].forEach(i=>$(i).addEventListener('input',autoSaveSet));
+$('sdcp').addEventListener('click',()=>{SDK.forEach(k=>{$(k).value=''});render();autoSaveSet()});
 $('stl').addEventListener('change',e=>{const c=e.target.closest('input[data-id]');if(!c)return;
   if(c.checked)S.staf[c.dataset.id]=1;else delete S.staf[c.dataset.id];
   stafSave();autoSaveSet();render()});
